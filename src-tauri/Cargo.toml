@@ -1,6 +1,6 @@
 [package]
 name = "beacon"
-version = "1.2.0"
+version = "1.2.1"
 description = "Local dev-server control center"
 authors = ["Beacon"]
 edition = "2021"
@@ -28,4 +28,6 @@ base64 = "0.22.1"
 sysinfo = "0.39.6"
 tauri-plugin-notification = "2.3.3"
 tauri-plugin-single-instance = "2.4.3"
+tauri-plugin-updater = "2.10.1"
+tauri-plugin-process = "2.3.1"
 

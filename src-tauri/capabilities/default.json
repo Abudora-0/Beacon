@@ -12,6 +12,8 @@
       "allow": [{ "url": "http://localhost:*" }, { "url": "http://127.0.0.1:*" }]
     },
     "dialog:default",
-    "notification:default"
+    "notification:default",
+    "updater:default",
+    "process:default"
   ]
 }

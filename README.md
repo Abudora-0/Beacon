@@ -7,6 +7,7 @@
 **A local dev-server control center for Windows.**
 Scan a folder, and Beacon finds every project inside it, launches the right dev server with the right package manager, and keeps a live dashboard of logs, ports, and resource usage — all without touching a terminal.
 
+[![Latest release](https://img.shields.io/github/v/release/Abudora-0/beacon?label=download&color=3ff08a)](https://github.com/Abudora-0/beacon/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-3ff08a.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows-3ff08a.svg)](#)
 [![Built with Tauri](https://img.shields.io/badge/Built%20with-Tauri%202-3ff08a.svg)](https://tauri.app)
@@ -32,6 +33,7 @@ Point Beacon at a folder full of side projects, and it takes care of the rest:
 - 🔔 **Background & tray** — closing the window keeps servers running in the tray; get a native notification if something crashes or a port collides.
 - 📌 **Pin, search, filter** — pin favorites, search by name, filter by framework or running state.
 - ⌨️ **Keyboard accessible** — every interactive element is reachable and operable without a mouse.
+- 🔄 **In-app updates** — checks for and installs new releases from Settings, no manual reinstall needed.
 
 ## Tech stack
 
@@ -71,8 +73,12 @@ The signed NSIS installer will be at `src-tauri/target/release/bundle/nsis/`.
 beacon/
 ├── src/               React frontend (single-page dashboard)
 ├── src-tauri/         Rust backend — scanning, process management, tray, static server
-└── .github/           README assets
+└── .github/           README assets & CI release workflow
 ```
+
+## Releases
+
+Every push of a `v*` tag builds a signed installer via GitHub Actions and publishes it as a draft release (see [`.github/workflows/release.yml`](.github/workflows/release.yml)). See [CHANGELOG.md](CHANGELOG.md) for version history.
 
 ## License
 

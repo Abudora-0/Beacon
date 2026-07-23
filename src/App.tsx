@@ -9,6 +9,8 @@ import {
   requestPermission,
   sendNotification,
 } from "@tauri-apps/plugin-notification";
+import { check as checkUpdate, type Update } from "@tauri-apps/plugin-updater";
+import { relaunch } from "@tauri-apps/plugin-process";
 import type {
   ExitInfo,
   LogLine,
@@ -538,6 +540,12 @@ function App() {
   const [logsSelected, setLogsSelected] = useState<string | null>(null);
   const [notifPermission, setNotifPermission] = useState<boolean | null>(null);
   const [appVersion, setAppVersion] = useState<string | null>(null);
+  const [updateState, setUpdateState] = useState<
+    "idle" | "checking" | "available" | "none" | "downloading" | "error"
+  >("idle");
+  const [updateInfo, setUpdateInfo] = useState<{ version: string } | null>(null);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+  const pendingUpdate = useRef<Update | null>(null);
   const [previewProject, setPreviewProject] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
@@ -933,6 +941,39 @@ function App() {
     });
   }, []);
 
+  const checkForUpdates = useCallback(async () => {
+    setUpdateState("checking");
+    setUpdateError(null);
+    try {
+      const update = await checkUpdate();
+      if (update) {
+        pendingUpdate.current = update;
+        setUpdateInfo({ version: update.version });
+        setUpdateState("available");
+      } else {
+        pendingUpdate.current = null;
+        setUpdateState("none");
+      }
+    } catch (e) {
+      setUpdateError(String(e));
+      setUpdateState("error");
+    }
+  }, []);
+
+  const installUpdate = useCallback(async () => {
+    const update = pendingUpdate.current;
+    if (!update) return;
+    setUpdateState("downloading");
+    setUpdateError(null);
+    try {
+      await update.downloadAndInstall();
+      await relaunch();
+    } catch (e) {
+      setUpdateError(String(e));
+      setUpdateState("error");
+    }
+  }, []);
+
   const isSelf = (p: ProjectState) => p.info.name === SELF_NAME;
 
   const list = Object.values(projects);
@@ -1219,6 +1260,51 @@ function App() {
               <p className="muted small">
                 Version {appVersion ?? "…"} · Built with Tauri + React
               </p>
+              <div
+                className={`settings-status ${
+                  updateState === "available"
+                    ? "warn"
+                    : updateState === "none"
+                      ? "ok"
+                      : "pending"
+                }`}
+              >
+                <span
+                  className={`dot ${
+                    updateState === "available"
+                      ? "starting"
+                      : updateState === "none"
+                        ? "running"
+                        : ""
+                  }`}
+                />
+                {updateState === "checking"
+                  ? "Checking for updates…"
+                  : updateState === "available"
+                    ? `Update available: v${updateInfo?.version}`
+                    : updateState === "downloading"
+                      ? "Downloading update…"
+                      : updateState === "error"
+                        ? `Update check failed${updateError ? `: ${updateError}` : ""}`
+                        : updateState === "none"
+                          ? "You're up to date"
+                          : "Not checked yet"}
+              </div>
+              <div className="row-gap">
+                {updateState === "available" ? (
+                  <button className="btn primary" onClick={installUpdate}>
+                    <Icon name="refresh" size={15} /> Install update
+                  </button>
+                ) : (
+                  <button
+                    className="btn"
+                    onClick={checkForUpdates}
+                    disabled={updateState === "checking" || updateState === "downloading"}
+                  >
+                    <Icon name="refresh" size={15} /> Check for updates
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         ) : roots.length === 0 ? (

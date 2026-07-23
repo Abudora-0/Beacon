@@ -2,7 +2,7 @@
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Beacon",
   "mainBinaryName": "Beacon",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "identifier": "com.beacon.desktop",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -28,6 +28,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -35,5 +36,16 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/Abudora-0/beacon/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEJFOTUzNUExMjBEQTQ4MDEKUldRQlNOb2dvVFdWdnBwZlk4V0ZLcnJxZ2RFU2Y2OHFvYnlhNmNKZEswNHRoQndVTnN0K09QNmYK",
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }
