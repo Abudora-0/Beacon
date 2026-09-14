@@ -1,0 +1,38 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="140" y1="120" x2="900" y2="920" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#43f28d"/>
+      <stop offset="1" stop-color="#149a48"/>
+    </linearGradient>
+    <linearGradient id="sheen" x1="512" y1="90" x2="512" y2="620" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffffff" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="ds" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="14" stdDeviation="20" flood-color="#031a0d" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <!-- rounded app tile -->
+  <rect x="112" y="112" width="800" height="800" rx="200" fill="url(#bg)"/>
+  <rect x="112" y="112" width="800" height="800" rx="200" fill="url(#sheen)"/>
+  <rect x="112.5" y="112.5" width="799" height="799" rx="199.5" fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="3"/>
+
+  <!-- node-mesh glyph: hub server watching two managed servers -->
+  <g filter="url(#ds)">
+    <!-- pulse halo around the hub -->
+    <circle cx="512" cy="378" r="150" fill="none" stroke="#06180d" stroke-opacity="0.28" stroke-width="24"/>
+
+    <!-- connecting links -->
+    <path d="M470 428 L378 590" stroke="#06180d" stroke-width="46" stroke-linecap="round"/>
+    <path d="M554 428 L646 590" stroke="#06180d" stroke-width="46" stroke-linecap="round"/>
+
+    <!-- managed nodes -->
+    <circle cx="360" cy="628" r="66" fill="#06180d"/>
+    <circle cx="664" cy="628" r="66" fill="#06180d"/>
+
+    <!-- hub node -->
+    <circle cx="512" cy="378" r="94" fill="#06180d"/>
+    <circle cx="512" cy="378" r="94" fill="url(#sheen)" fill-opacity="0.5"/>
+  </g>
+</svg>

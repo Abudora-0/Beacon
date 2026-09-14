@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Beacon: a local dev-server control center for Windows</title>
+<meta name="description" content="Point Beacon at a folder full of side projects. It finds every one of them, starts the right dev server with the right package manager, and keeps a live dashboard of logs, ports, and resource usage. No terminal required." />
+<meta property="og:title" content="Beacon" />
+<meta property="og:description" content="A local dev-server control center for Windows. Scan a folder, run every project, watch it all from one dashboard." />
+<meta property="og:image" content="assets/screenshot.png" />
+<meta property="og:type" content="website" />
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png" />
+<link rel="icon" type="image/png" sizes="128x128" href="assets/favicon-128.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<header>
+  <div class="container nav">
+    <a class="brand" href="#top">
+      <img src="assets/logo.svg" alt="" width="30" height="30" />
+      <span class="brand-word">Beacon</span>
+    </a>
+    <nav class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#how-it-works">How it works</a>
+      <a href="#dashboard">Dashboard</a>
+    </nav>
+    <div class="nav-actions">
+      <a class="icon-link" href="https://github.com/Abudora-0/beacon" aria-label="View source on GitHub" target="_blank" rel="noopener">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.09 3.29 9.4 7.86 10.93.57.1.78-.25.78-.55v-2.15c-3.2.7-3.87-1.36-3.87-1.36-.53-1.33-1.29-1.69-1.29-1.69-1.05-.72.08-.7.08-.7 1.17.08 1.78 1.2 1.78 1.2 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.68 0-1.26.45-2.28 1.19-3.08-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.8 1.19 1.82 1.19 3.08 0 4.41-2.69 5.38-5.25 5.67.41.36.78 1.08.78 2.17v3.22c0 .3.2.66.79.55A11.5 11.5 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z"/></svg>
+      </a>
+      <a class="btn primary" href="https://github.com/Abudora-0/beacon/releases/latest" target="_blank" rel="noopener">Download</a>
+      <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="container mobile-menu" id="mobileMenu">
+    <a href="#features">Features</a>
+    <a href="#how-it-works">How it works</a>
+    <a href="#dashboard">Dashboard</a>
+    <a href="https://github.com/Abudora-0/beacon" target="_blank" rel="noopener">GitHub</a>
+  </div>
+</header>
+
+<main id="top">
+
+  <section class="hero">
+    <div class="hero-bg">
+      <div class="scan-grid"></div>
+      <div class="ring"></div>
+      <div class="ring r2"></div>
+      <div class="ring r3"></div>
+    </div>
+    <div class="container">
+      <div class="hero-top">
+        <span class="eyebrow"><span class="dot"></span> Now scanning your projects folder</span>
+        <h1>Every dev server.<br />One <span class="accent-text">dashboard</span>.<br />Zero terminal tabs.</h1>
+        <p class="hero-sub">Point Beacon at a folder full of side projects. It finds every one of them, launches the right dev server with the right package manager, and keeps a live view of logs, ports, and resource usage.</p>
+        <div class="hero-ctas">
+          <a class="btn primary lg" href="https://github.com/Abudora-0/beacon/releases/latest" target="_blank" rel="noopener">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/></svg>
+            Download for Windows
+          </a>
+          <a class="btn lg" href="https://github.com/Abudora-0/beacon" target="_blank" rel="noopener">View on GitHub</a>
+        </div>
+        <p class="hero-note">Free and open source. MIT licensed. Built with Tauri, so it stays out of your way.</p>
+      </div>
+
+      <div class="mock-shell reveal" id="dashboard">
+        <div class="mock-titlebar">
+          <span class="mock-dot red"></span>
+          <span class="mock-dot amber"></span>
+          <span class="mock-dot green"></span>
+          <span>beacon.exe</span>
+        </div>
+        <div class="mock-body">
+          <div class="mock-sidebar">
+            <div class="mock-logo">
+              <img src="assets/logo.svg" alt="" width="18" height="18" />
+              <span>Beacon</span>
+            </div>
+            <div class="mock-nav-item active">Dashboard</div>
+            <div class="mock-nav-item">Running</div>
+            <div class="mock-nav-item">Pinned</div>
+            <div class="mock-nav-item">Logs</div>
+            <div class="mock-nav-item">Settings</div>
+          </div>
+          <div class="mock-main">
+            <div class="mock-stats">
+              <div class="mock-stat">
+                <div class="mock-stat-label">Projects</div>
+                <div class="mock-stat-value" data-count-to="44">0</div>
+              </div>
+              <div class="mock-stat">
+                <div class="mock-stat-label">Running</div>
+                <div class="mock-stat-value" data-count-to="3">0</div>
+              </div>
+              <div class="mock-stat">
+                <div class="mock-stat-label">Ports</div>
+                <div class="mock-stat-value" data-count-to="3">0</div>
+              </div>
+            </div>
+            <div class="mock-cards">
+              <div class="mock-card running">
+                <div class="mock-card-head">
+                  <span class="mock-card-dot"></span>
+                  <span class="mock-card-name">ai-code-reviewer</span>
+                </div>
+                <div class="mock-card-tag">Next.js &middot; localhost:3000</div>
+              </div>
+              <div class="mock-card running">
+                <div class="mock-card-head">
+                  <span class="mock-card-dot"></span>
+                  <span class="mock-card-name">beacon</span>
+                </div>
+                <div class="mock-card-tag">React (Vite) &middot; npm run dev</div>
+              </div>
+              <div class="mock-card">
+                <div class="mock-card-head">
+                  <span class="mock-card-dot"></span>
+                  <span class="mock-card-name">arcade-hub</span>
+                </div>
+                <div class="mock-card-tag">Static HTML/CSS/JS</div>
+              </div>
+              <div class="mock-card">
+                <div class="mock-card-head">
+                  <span class="mock-card-dot"></span>
+                  <span class="mock-card-name">analog-clock</span>
+                </div>
+                <div class="mock-card-tag">Static HTML/CSS/JS</div>
+              </div>
+            </div>
+            <div class="mock-log" id="mockLog"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="how-it-works">
+    <div class="container">
+      <div class="section-head reveal">
+        <h2>From folder to running app in four steps</h2>
+        <p>No config files to write, no scripts to memorize. Beacon figures out what it is looking at.</p>
+      </div>
+      <div class="steps">
+        <div class="steps-track">
+          <div class="steps-line"></div>
+          <div class="step">
+            <div class="step-node">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/></svg>
+            </div>
+            <h3>Point at a folder</h3>
+            <p>Pick the folder where your side projects live. Beacon remembers it for next time.</p>
+          </div>
+          <div class="step">
+            <div class="step-node">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>
+            </div>
+            <h3>Auto-discovery scans</h3>
+            <p>It walks the tree, skips node_modules and build output, and detects the framework each project uses.</p>
+          </div>
+          <div class="step">
+            <div class="step-node">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5v14l11-7z"/></svg>
+            </div>
+            <h3>One click to start</h3>
+            <p>Beacon launches each project with the package manager it actually uses. No guessing, no typos.</p>
+          </div>
+          <div class="step">
+            <div class="step-node">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>
+            </div>
+            <h3>Live dashboard</h3>
+            <p>Logs stream in, ports auto-detect, and CPU and memory update while you keep working.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="features">
+    <div class="container">
+      <div class="section-head reveal">
+        <h2>Everything a dev-server manager should do</h2>
+        <p>Built for people who run more side projects than they can keep track of in their head.</p>
+      </div>
+      <div class="features-grid" id="featuresGrid">
+        <div class="feature-card">
+          <div class="feature-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></div>
+          <h3>Auto-discovery</h3>
+          <p>Recursively scans for Node and static projects, skipping node_modules, dist, build, and dotfolders along the way.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/></svg></div>
+          <h3>Framework detection</h3>
+          <p>Recognizes Next.js, Vite, React, Express, and more, and labels every project the moment it is found.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1zM10 12h4"/></svg></div>
+          <h3>Package-manager aware</h3>
+          <p>Reads packageManager or the lockfile and starts each project with npm, pnpm, yarn, or bun, whichever it actually uses.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5v14l11-7z"/></svg></div>
+          <h3>One-click control</h3>
+          <p>Start, stop, and restart any dev server, with stdout and stderr streamed live to the dashboard.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg></div>
+          <h3>Favicon everywhere</h3>
+          <p>Pulls each project's real favicon, including inline data URIs and bundler-served assets.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20Z"/></svg></div>
+          <h3>Zero-config static server</h3>
+          <p>Plain HTML, CSS, and JS projects get served instantly, with no build step and nothing to configure.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg></div>
+          <h3>Live stats</h3>
+          <p>Per-project CPU and memory usage, sampled efficiently instead of scanning the whole system.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></div>
+          <h3>Background and tray</h3>
+          <p>Closing the window keeps servers running. Get a native notification if something crashes or a port collides.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="proof">
+    <div class="container">
+      <div class="section-head reveal">
+        <h2>The real dashboard, not a mockup</h2>
+        <p>This is Beacon running 44 projects side by side, on an ordinary Windows machine.</p>
+      </div>
+      <div class="proof-frame reveal">
+        <div class="mock-titlebar">
+          <span class="mock-dot red"></span>
+          <span class="mock-dot amber"></span>
+          <span class="mock-dot green"></span>
+          <span>Beacon &middot; D:\Code</span>
+        </div>
+        <img src="assets/screenshot.png" alt="Beacon dashboard showing a grid of project cards, live stats, and a project detail panel with streaming logs" />
+      </div>
+    </div>
+  </section>
+
+  <section class="tech-strip">
+    <div class="container">
+      <div class="tech-row">
+        <span class="tech-label">Built with</span>
+        <a class="tech-chip" href="https://tauri.app" target="_blank" rel="noopener">Tauri 2</a>
+        <a class="tech-chip" href="https://www.rust-lang.org" target="_blank" rel="noopener">Rust</a>
+        <a class="tech-chip" href="https://react.dev" target="_blank" rel="noopener">React 19</a>
+        <a class="tech-chip" href="https://www.typescriptlang.org" target="_blank" rel="noopener">TypeScript</a>
+        <a class="tech-chip" href="https://vitejs.dev" target="_blank" rel="noopener">Vite</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta">
+    <div class="container">
+      <div class="cta-panel reveal">
+        <h2>Stop juggling terminal tabs</h2>
+        <p>Beacon is free, open source, and built for a folder full of side projects that keeps growing.</p>
+        <div class="cta-ctas">
+          <a class="btn primary lg" href="https://github.com/Abudora-0/beacon/releases/latest" target="_blank" rel="noopener">Download for Windows</a>
+          <a class="btn lg" href="https://github.com/Abudora-0/beacon" target="_blank" rel="noopener">Star on GitHub</a>
+        </div>
+        <p class="cta-fine">MIT licensed. No account required. No telemetry.</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="container footer-row">
+    <div class="footer-brand">
+      <img src="assets/logo.svg" alt="" width="20" height="20" />
+      <span>Beacon. Built with Tauri and React.</span>
+    </div>
+    <div class="footer-links">
+      <a href="https://github.com/Abudora-0/beacon" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/Abudora-0/beacon/releases" target="_blank" rel="noopener">Releases</a>
+      <a href="https://github.com/Abudora-0/beacon/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a>
+      <a href="https://github.com/Abudora-0/beacon/blob/main/LICENSE" target="_blank" rel="noopener">License</a>
+    </div>
+  </div>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>
