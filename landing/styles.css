@@ -216,7 +216,8 @@ header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-3) 0;
+  gap: var(--space-4);
+  padding: 12px 0;
 }
 
 .brand {
@@ -245,7 +246,8 @@ header {
 .nav-links {
   display: flex;
   align-items: center;
-  gap: var(--space-6);
+  gap: var(--space-5);
+  flex-shrink: 1;
 }
 
 .nav-links a {
@@ -264,6 +266,12 @@ header {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+.nav-actions .btn {
+  padding: 9px var(--space-4);
+  font-size: var(--text-sm);
 }
 
 .icon-link {
@@ -976,6 +984,10 @@ footer {
 }
 
 /* ------------------------------- responsive nav ------------------------------- */
+@media (max-width: 980px) {
+  .nav-links { gap: var(--space-4); }
+}
+
 @media (max-width: 760px) {
   .nav-links { display: none; }
   .nav-toggle { display: inline-flex; }

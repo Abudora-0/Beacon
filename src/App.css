@@ -648,6 +648,14 @@ body,
   border-radius: 5px;
 }
 
+.proj-icon-fallback {
+  border-radius: 5px;
+  border: 1px solid;
+  font-weight: 700;
+  line-height: 1;
+  user-select: none;
+}
+
 .dot.corner {
   position: absolute;
   bottom: -2px;
@@ -1007,6 +1015,56 @@ body,
 
 .ds-value.stopped {
   color: var(--dim);
+}
+
+.port-override {
+  padding: var(--space-3) var(--space-5) 0;
+}
+
+.port-override-warning {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--amber);
+  background: rgba(240, 180, 41, 0.12);
+  border: 1px solid rgba(240, 180, 41, 0.35);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-xs);
+  margin: 0 0 var(--space-2);
+}
+
+.port-override-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--dim);
+}
+
+.port-override-label {
+  flex-shrink: 0;
+  font-weight: 600;
+}
+
+.port-override-input {
+  width: 90px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font: inherit;
+  font-family: Consolas, monospace;
+  padding: 5px var(--space-2);
+  outline: none;
+}
+
+.port-override-input:focus {
+  border-color: var(--accent-deep);
+}
+
+.port-override.conflict .port-override-input {
+  border-color: var(--amber);
 }
 
 .detail-actions {

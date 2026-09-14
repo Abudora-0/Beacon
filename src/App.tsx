@@ -282,7 +282,27 @@ function LogoWordmark({ size = 22 }: { size?: number }) {
 
 function ProjectIcon({ p, size = 22 }: { p: ProjectState; size?: number }) {
   if (!p.info.favicon) {
-    return <span className={`dot ${p.status}`} />;
+    // No real (or no non-default-scaffold) icon to show — a colored
+    // initial beats a plain dot for telling projects apart at a glance,
+    // especially the many that share an unmodified framework favicon.
+    const color = frameworkColor(p.info.framework);
+    const initial = p.info.name.trim().charAt(0).toUpperCase() || "?";
+    return (
+      <span
+        className="proj-icon proj-icon-fallback"
+        style={{
+          width: size,
+          height: size,
+          color,
+          borderColor: `${color}55`,
+          background: `${color}22`,
+          fontSize: Math.max(10, Math.round(size * 0.5)),
+        }}
+      >
+        {initial}
+        <span className={`dot corner ${p.status}`} />
+      </span>
+    );
   }
   return (
     <span className="proj-icon" style={{ width: size, height: size }}>
@@ -551,6 +571,7 @@ function App() {
   const [scanning, setScanning] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [runHistory, setRunHistory] = useState<number[]>([]);
+  const [portsHistory, setPortsHistory] = useState<number[]>([]);
   const [logHistory, setLogHistory] = useState<number[]>([]);
   const [pinned, setPinned] = useState<Set<string>>(() => {
     try {
@@ -567,9 +588,23 @@ function App() {
       return [];
     }
   });
+  // Per-project "start on this port instead" overrides, keyed by path.
+  const [portOverrides, setPortOverrides] = useState<Record<string, number>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("beacon-port-overrides") ?? "{}");
+    } catch {
+      return {};
+    }
+  });
+  // Projects whose most recent exit was because their port was already
+  // taken by something else — drives the reactive "try a different port"
+  // prompt in the detail panel until the project starts successfully.
+  const [portConflicts, setPortConflicts] = useState<Set<string>>(new Set());
 
   const projectsRef = useRef(projects);
   projectsRef.current = projects;
+  const portOverridesRef = useRef(portOverrides);
+  portOverridesRef.current = portOverrides;
   const restartPending = useRef<Set<string>>(new Set());
   const logCounter = useRef(0);
   const logIdCounter = useRef(0);
@@ -740,6 +775,9 @@ function App() {
             // notifications are best-effort — a failure here shouldn't matter
           }
         }
+        if (reason === "port_conflict") {
+          setPortConflicts((prev) => new Set(prev).add(path));
+        }
         if (restartPending.current.has(path)) {
           restartPending.current.delete(path);
           setTimeout(() => startProject(path), 450);
@@ -764,7 +802,11 @@ function App() {
       const running = Object.values(projectsRef.current).filter(
         (p) => p.status !== "stopped"
       ).length;
+      const activePortsNow = Object.values(projectsRef.current).filter(
+        (p) => p.status === "running" && p.port
+      ).length;
       setRunHistory((h) => [...h, running].slice(-HISTORY_LEN));
+      setPortsHistory((h) => [...h, activePortsNow].slice(-HISTORY_LEN));
       setLogHistory((h) => [...h, logCounter.current].slice(-HISTORY_LEN));
       logCounter.current = 0;
     }, 2000);
@@ -869,11 +911,31 @@ function App() {
     });
   }
 
+  function setPortOverride(path: string, port: number | null) {
+    setPortOverrides((prev) => {
+      const next = { ...prev };
+      if (port == null || !Number.isFinite(port) || port <= 0) {
+        delete next[path];
+      } else {
+        next[path] = port;
+      }
+      localStorage.setItem("beacon-port-overrides", JSON.stringify(next));
+      return next;
+    });
+  }
+
   const startProject = useCallback(async (path: string) => {
     const p = projectsRef.current[path];
     if (!p) return;
     if (p.info.kind === "npm" && !p.info.dev_script) return;
     setError(null);
+    setPortConflicts((prev) => {
+      if (!prev.has(path)) return prev;
+      const next = new Set(prev);
+      next.delete(path);
+      return next;
+    });
+    const port = portOverridesRef.current[path];
     setProjects((prev) => ({
       ...prev,
       [path]: {
@@ -889,11 +951,12 @@ function App() {
     try {
       const res =
         p.info.kind === "static"
-          ? await invoke<StartResult>("start_static_project", { path })
+          ? await invoke<StartResult>("start_static_project", { path, port })
           : await invoke<StartResult>("start_project", {
               path,
               script: p.info.dev_script as string,
               packageManager: p.info.package_manager,
+              port,
             });
       setProjects((prev) => {
         const cur = prev[path];
@@ -910,7 +973,7 @@ function App() {
     }
   }, []);
 
-  const stopProject = useCallback(async (path: string) => {
+  const stopProject = useCallback(async (path: string): Promise<boolean> => {
     const p = projectsRef.current[path];
     try {
       if (p?.info.kind === "static") {
@@ -918,15 +981,25 @@ function App() {
       } else {
         await invoke("stop_project", { path });
       }
+      return true;
     } catch (e) {
       setError(String(e));
+      return false;
     }
   }, []);
 
   const restartProject = useCallback(
     async (path: string) => {
       restartPending.current.add(path);
-      await stopProject(path);
+      const stopped = await stopProject(path);
+      // If the stop call itself failed (e.g. the process was already gone),
+      // no "project-exited" event will ever fire for it — so if we left the
+      // flag set, a *future* unrelated exit of this same project would
+      // silently auto-restart it. Only the "project-exited" handler clears
+      // it on success.
+      if (!stopped) {
+        restartPending.current.delete(path);
+      }
     },
     [stopProject]
   );
@@ -1345,7 +1418,7 @@ function App() {
                   label="Active Ports"
                   value={activePorts}
                   accent="#c084fc"
-                  data={runHistory}
+                  data={portsHistory}
                 />
                 <StatCard
                   label="Log Activity"
@@ -1419,6 +1492,9 @@ function App() {
                   now={now}
                   self={isSelf(sel)}
                   pinned={pinned.has(sel.info.path)}
+                  portOverride={portOverrides[sel.info.path]}
+                  onPortOverrideChange={(port) => setPortOverride(sel.info.path, port)}
+                  portConflict={portConflicts.has(sel.info.path)}
                   onStart={() => startProject(sel.info.path)}
                   onStop={() => stopProject(sel.info.path)}
                   onRestart={() => restartProject(sel.info.path)}
@@ -1478,6 +1554,9 @@ function ProjectDetail({
   now,
   self,
   pinned,
+  portOverride,
+  onPortOverrideChange,
+  portConflict,
   onStart,
   onStop,
   onRestart,
@@ -1492,6 +1571,9 @@ function ProjectDetail({
   now: number;
   self: boolean;
   pinned: boolean;
+  portOverride: number | undefined;
+  onPortOverrideChange: (port: number | null) => void;
+  portConflict: boolean;
   onStart: () => void;
   onStop: () => void;
   onRestart: () => void;
@@ -1560,6 +1642,30 @@ function ProjectDetail({
             {running && p.memMb != null ? `${p.memMb.toFixed(0)} MB` : "—"}
           </span>
         </div>
+      </div>
+
+      <div className={`port-override ${portConflict ? "conflict" : ""}`}>
+        {portConflict && (
+          <p className="port-override-warning">
+            <Icon name="info" size={13} /> Port already in use by another process. Try a different
+            port below.
+          </p>
+        )}
+        <label className="port-override-row">
+          <span className="port-override-label">Start on port</span>
+          <input
+            type="number"
+            className="port-override-input"
+            placeholder="auto"
+            min={1}
+            max={65535}
+            value={portOverride ?? ""}
+            onChange={(e) => {
+              const raw = e.target.value;
+              onPortOverrideChange(raw === "" ? null : Number(raw));
+            }}
+          />
+        </label>
       </div>
 
       <div className="detail-actions">

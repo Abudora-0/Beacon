@@ -3,12 +3,12 @@ use regex::Regex;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read, Write};
-use std::net::{TcpListener, TcpStream};
+use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use sysinfo::{Pid, ProcessesToUpdate, System};
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
@@ -274,11 +274,57 @@ fn favicon_from_html(html_path: &Path, root: &Path) -> Option<String> {
 
     for path in candidates {
         if let Some(bytes) = read_favicon_bytes(&path) {
-            let mime = favicon_mime(&path);
-            return Some(format!("data:{};base64,{}", mime, BASE64.encode(bytes)));
+            if let Some(uri) = favicon_data_uri(bytes, &path) {
+                return Some(uri);
+            }
         }
     }
     None
+}
+
+// Known "unmodified scaffold" favicons. If a resolved icon's bytes match one
+// of these byte-for-byte, the project never replaced its framework's stock
+// icon — which is exactly why unrelated projects that also never customized
+// it end up looking identical in the dashboard. Treated the same as having
+// no favicon at all, so the UI falls back to a colored initial-letter avatar
+// instead of a misleading default logo.
+//
+// The legacy Vite icon is checked directly against this repo's own leftover
+// `public/vite.svg` scaffold file via `include_bytes!` (Beacon itself was
+// originally scaffolded with `npm create vite`) — guaranteed byte-accurate,
+// no hash to keep in sync. The rest are SHA-256 digests of each tool's
+// official default template asset, computed once from upstream sources.
+const DEFAULT_VITE_SVG_LEGACY: &[u8] = include_bytes!("../../public/vite.svg");
+
+const DEFAULT_FAVICON_HASHES: &[&str] = &[
+    // Vite (current) — create-vite/template-react-ts/public/favicon.svg
+    "61bc9a161de58248288e6905425d7180f0624c2865007b97d763fdac12043a66",
+    // Create React App — cra-template/template/public/logo192.png
+    "c386396ec70db3608075b5fbfaac4ab1ccaa86ba05a68ab393ec551eb66c3e00",
+    // Create React App — cra-template/template/public/favicon.ico
+    "3d10f7da6c603178340081668c4ac5b3ae9743ca9a262ab0fcd312fbb9f48bdd",
+    // Next.js (App Router) — create-next-app/templates/app/ts/app/favicon.ico
+    "c28fdd2a4f31e2dc64f653962286da5c82a4cdfc518b242d32812c624e9a19a4",
+];
+
+fn is_default_scaffold_icon(bytes: &[u8]) -> bool {
+    if bytes == DEFAULT_VITE_SVG_LEGACY {
+        return true;
+    }
+    use sha2::{Digest, Sha256};
+    let digest = format!("{:x}", Sha256::digest(bytes));
+    DEFAULT_FAVICON_HASHES.contains(&digest.as_str())
+}
+
+/// Turns favicon bytes into a data URI, unless they're an unmodified
+/// default scaffold icon — in which case this returns `None` so the caller
+/// keeps looking (or falls back to no icon at all).
+fn favicon_data_uri(bytes: Vec<u8>, path: &Path) -> Option<String> {
+    if is_default_scaffold_icon(&bytes) {
+        return None;
+    }
+    let mime = favicon_mime(path);
+    Some(format!("data:{};base64,{}", mime, BASE64.encode(bytes)))
 }
 
 fn find_favicon(dir: &Path) -> Option<String> {
@@ -286,8 +332,9 @@ fn find_favicon(dir: &Path) -> Option<String> {
         for f in FAVICON_FILES {
             let path = dir.join(format!("{d}{f}"));
             if let Some(bytes) = read_favicon_bytes(&path) {
-                let mime = favicon_mime(&path);
-                return Some(format!("data:{};base64,{}", mime, BASE64.encode(bytes)));
+                if let Some(uri) = favicon_data_uri(bytes, &path) {
+                    return Some(uri);
+                }
             }
         }
     }
@@ -394,6 +441,20 @@ fn read_static_project(dir: &Path) -> Option<ProjectInfo> {
     })
 }
 
+// Folder names that are meaningful inside a project but say nothing on
+// their own in a flat dashboard list — two unrelated repos that both use
+// a frontend/backend split would otherwise show two identically-named
+// "frontend" cards. Matched case-insensitively against the literal
+// subfolder name.
+const GENERIC_NAMES: &[&str] = &[
+    "frontend", "backend", "client", "server", "web", "app", "api", "ui",
+    "src", "admin", "dashboard", "core", "www",
+];
+
+fn is_generic_name(name: &str) -> bool {
+    GENERIC_NAMES.contains(&name.to_lowercase().as_str())
+}
+
 fn normalize_path(p: &Path) -> String {
     p.to_string_lossy().to_lowercase().replace('/', "\\")
 }
@@ -478,6 +539,16 @@ fn scan_dir(dir: &Path, depth: u32, excluded: &std::collections::HashSet<String>
         } else {
             if nested.len() == 1 && count_subdirs(&path) <= 3 {
                 nested[0].name = name.clone();
+            } else if nested.len() > 1 {
+                // Several sibling projects under one wrapper folder (e.g. a
+                // frontend/backend split) — a generically-named one on its
+                // own is ambiguous once it's flattened into the dashboard's
+                // single project list, so tag it with the wrapper's name.
+                for project in nested.iter_mut() {
+                    if is_generic_name(&project.name) {
+                        project.name = format!("{} ({})", name, project.name);
+                    }
+                }
             }
             found.append(&mut nested);
         }
@@ -519,6 +590,40 @@ fn scan_projects(app: AppHandle, root: String, excluded: Vec<String>) -> Result<
     Ok(results)
 }
 
+/// A dev server printing its port banner doesn't mean it's accepting
+/// connections yet (it may still be compiling the first request). Poll the
+/// port briefly on a background thread before telling the frontend it's
+/// ready, so a click on "Open"/"Preview" is less likely to land on a bare
+/// connection refusal. Bounded so a port that never becomes reachable some
+/// other way doesn't leave the UI stuck at "detecting port…" forever — it's
+/// still announced once the window elapses, just without that extra
+/// confidence. Re-checks that the project is still running before emitting,
+/// so a project that crashed mid-verification doesn't get resurrected by a
+/// stale port event racing the exit event.
+fn spawn_port_verifier(app: AppHandle, path: String, port: u16) {
+    std::thread::spawn(move || {
+        let addr: SocketAddr = ([127, 0, 0, 1], port).into();
+        let deadline = Instant::now() + Duration::from_secs(6);
+        loop {
+            if TcpStream::connect_timeout(&addr, Duration::from_millis(250)).is_ok() {
+                break;
+            }
+            if Instant::now() >= deadline {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(300));
+        }
+        let still_running = {
+            let state: State<'_, ProcessMap> = app.state();
+            let running = state.lock().unwrap().contains_key(&path);
+            running
+        };
+        if still_running {
+            let _ = app.emit("project-port", PortPayload { path, port });
+        }
+    });
+}
+
 fn spawn_reader_threads(app: &AppHandle, child: &mut Child, path: &str) {
     let stdout = child.stdout.take();
     let stderr = child.stderr.take();
@@ -538,16 +643,19 @@ fn spawn_reader_threads(app: &AppHandle, child: &mut Child, path: &str) {
                 let line = strip_ansi(&raw_line);
                 if let Some(caps) = port_regex().captures(&line) {
                     if let Ok(port) = caps[1].parse::<u16>() {
-                        let state: State<'_, ProcessMap> = app.state();
-                        let mut map = state.lock().unwrap();
-                        if let Some(proc) = map.get_mut(&path) {
-                            if proc.port.is_none() {
-                                proc.port = Some(port);
-                                let _ = app.emit(
-                                    "project-port",
-                                    PortPayload { path: path.clone(), port },
-                                );
+                        let should_verify = {
+                            let state: State<'_, ProcessMap> = app.state();
+                            let mut map = state.lock().unwrap();
+                            match map.get_mut(&path) {
+                                Some(proc) if proc.port.is_none() => {
+                                    proc.port = Some(port);
+                                    true
+                                }
+                                _ => false,
                             }
+                        };
+                        if should_verify {
+                            spawn_port_verifier(app.clone(), path.clone(), port);
                         }
                     }
                 }
@@ -589,6 +697,7 @@ fn do_start(
     path: String,
     script: String,
     package_manager: String,
+    port: Option<u16>,
 ) -> Result<StartResult, String> {
     let state: State<'_, ProcessMap> = app.state();
     {
@@ -606,6 +715,15 @@ fn do_start(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .stdin(Stdio::null());
+
+    // Respected by Vite, CRA, Express, and most Node servers that read
+    // `process.env.PORT`. A plain `next dev` doesn't honor it (it only
+    // listens to the `-p` flag), so this is a best-effort override rather
+    // than a guarantee — still the right lever for the common case where
+    // the project's default port is already taken by something else.
+    if let Some(p) = port {
+        cmd.env("PORT", p.to_string());
+    }
 
     #[cfg(windows)]
     {
@@ -641,8 +759,9 @@ fn start_project(
     path: String,
     script: String,
     package_manager: String,
+    port: Option<u16>,
 ) -> Result<StartResult, String> {
-    do_start(&app, path, script, package_manager)
+    do_start(&app, path, script, package_manager, port)
 }
 
 fn static_mime(path: &Path) -> &'static str {
@@ -791,7 +910,7 @@ fn serve_static(app: AppHandle, path: String, listener: TcpListener, stop_flag: 
     );
 }
 
-fn do_start_static(app: &AppHandle, path: String) -> Result<StartResult, String> {
+fn do_start_static(app: &AppHandle, path: String, port: Option<u16>) -> Result<StartResult, String> {
     {
         let state: State<'_, ProcessMap> = app.state();
         let sstate: State<'_, StaticServerMap> = app.state();
@@ -801,9 +920,12 @@ fn do_start_static(app: &AppHandle, path: String) -> Result<StartResult, String>
         }
     }
 
-    let listener =
-        TcpListener::bind("127.0.0.1:0").map_err(|e| format!("Failed to start: {}", e))?;
-    let port = listener
+    let addr = format!("127.0.0.1:{}", port.unwrap_or(0));
+    let listener = TcpListener::bind(&addr).map_err(|e| match port {
+        Some(p) => format!("Port {p} is already in use"),
+        None => format!("Failed to start: {e}"),
+    })?;
+    let bound_port = listener
         .local_addr()
         .map_err(|e| format!("Failed to start: {}", e))?
         .port();
@@ -814,7 +936,7 @@ fn do_start_static(app: &AppHandle, path: String) -> Result<StartResult, String>
         let sstate: State<'_, StaticServerMap> = app.state();
         sstate.lock().unwrap().insert(
             path.clone(),
-            StaticServer { port, started_at, stop_flag: stop_flag.clone() },
+            StaticServer { port: bound_port, started_at, stop_flag: stop_flag.clone() },
         );
     }
 
@@ -822,14 +944,14 @@ fn do_start_static(app: &AppHandle, path: String) -> Result<StartResult, String>
     let path2 = path.clone();
     std::thread::spawn(move || serve_static(app2, path2, listener, stop_flag));
 
-    let _ = app.emit("project-port", PortPayload { path: path.clone(), port });
+    let _ = app.emit("project-port", PortPayload { path: path.clone(), port: bound_port });
 
     Ok(StartResult { pid: 0, started_at })
 }
 
 #[tauri::command]
-fn start_static_project(app: AppHandle, path: String) -> Result<StartResult, String> {
-    do_start_static(&app, path)
+fn start_static_project(app: AppHandle, path: String, port: Option<u16>) -> Result<StartResult, String> {
+    do_start_static(&app, path, port)
 }
 
 fn do_stop_static(app: &AppHandle, path: &str) -> Result<(), String> {
@@ -961,9 +1083,9 @@ fn tray_start_all(app: &AppHandle) {
             continue;
         }
         if info.kind == "static" {
-            let _ = do_start_static(app, info.path);
+            let _ = do_start_static(app, info.path, None);
         } else if let Some(script) = info.dev_script.clone() {
-            let _ = do_start(app, info.path, script, info.package_manager.clone());
+            let _ = do_start(app, info.path, script, info.package_manager.clone(), None);
         }
     }
 }
@@ -1111,4 +1233,96 @@ pub fn run() {
                 }
             }
         });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    fn temp_test_dir(name: &str) -> PathBuf {
+        let nanos = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
+        let dir = std::env::temp_dir().join(format!("beacon-test-{name}-{nanos}"));
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    fn write_package_json(dir: &Path, name: &str) {
+        fs::write(
+            dir.join("package.json"),
+            format!(
+                r#"{{"name":"{name}","scripts":{{"dev":"vite"}},"dependencies":{{"react":"^18","vite":"^5"}}}}"#
+            ),
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn generic_name_detection_is_case_insensitive() {
+        assert!(is_generic_name("frontend"));
+        assert!(is_generic_name("Frontend"));
+        assert!(is_generic_name("BACKEND"));
+        assert!(!is_generic_name("my-cool-app"));
+        assert!(!is_generic_name(""));
+    }
+
+    #[test]
+    fn sibling_generic_projects_get_disambiguated() {
+        let root = temp_test_dir("siblings");
+        let wrapper = root.join("PortfolioSite");
+        fs::create_dir_all(wrapper.join("frontend")).unwrap();
+        fs::create_dir_all(wrapper.join("backend")).unwrap();
+        write_package_json(&wrapper.join("frontend"), "frontend");
+        write_package_json(&wrapper.join("backend"), "backend");
+
+        let excluded = std::collections::HashSet::new();
+        let found = scan_dir(&root, 5, &excluded);
+
+        let mut names: Vec<String> = found.iter().map(|p| p.name.clone()).collect();
+        names.sort();
+        assert_eq!(names, vec!["PortfolioSite (backend)", "PortfolioSite (frontend)"]);
+
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn non_generic_sibling_names_are_untouched() {
+        let root = temp_test_dir("siblings-named");
+        let wrapper = root.join("Monorepo");
+        fs::create_dir_all(wrapper.join("shop-storefront")).unwrap();
+        fs::create_dir_all(wrapper.join("shop-admin")).unwrap();
+        write_package_json(&wrapper.join("shop-storefront"), "shop-storefront");
+        write_package_json(&wrapper.join("shop-admin"), "shop-admin");
+
+        let excluded = std::collections::HashSet::new();
+        let found = scan_dir(&root, 5, &excluded);
+
+        let mut names: Vec<String> = found.iter().map(|p| p.name.clone()).collect();
+        names.sort();
+        assert_eq!(names, vec!["shop-admin", "shop-storefront"]);
+
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn single_nested_project_still_uses_wrapper_name() {
+        let root = temp_test_dir("single-nested");
+        let wrapper = root.join("Veloci");
+        fs::create_dir_all(wrapper.join("app")).unwrap();
+        write_package_json(&wrapper.join("app"), "app");
+
+        let excluded = std::collections::HashSet::new();
+        let found = scan_dir(&root, 5, &excluded);
+
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].name, "Veloci");
+
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn default_vite_favicon_is_suppressed() {
+        assert!(is_default_scaffold_icon(DEFAULT_VITE_SVG_LEGACY));
+        assert!(!is_default_scaffold_icon(b"<svg>a totally custom logo</svg>"));
+    }
 }
