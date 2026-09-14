@@ -2,6 +2,20 @@
 
 All notable changes to Beacon are documented here.
 
+## [1.3.0] - 2026-09-14
+
+### Added
+- Port override: start any project on a specific port instead of its default, from a field in the project detail panel — also surfaced automatically as a retry prompt when a project exits because its port was already taken
+
+### Changed
+- Projects that share a generic subfolder name (e.g. sibling `frontend`/`backend` folders) are now disambiguated with their wrapper folder's name instead of showing the same generic name on every card
+- Unmodified default framework favicons (Vite, CRA, Next.js) are now recognized and replaced with a colored initial-letter avatar, instead of showing the same stock logo on every uncustomized project
+- A detected dev-server port is now verified to actually accept a connection before being shown as ready, cutting down on premature "refused to connect" errors
+
+### Fixed
+- A project could be silently auto-restarted much later if a Restart's stop call failed and left its pending-restart flag stuck
+- The "Active Ports" stat card was plotting the same sparkline data as "Running Now" instead of its own history
+
 ## [1.2.1] - 2026-07-23
 
 ### Added
